@@ -1,0 +1,62 @@
+# PipeCD application config for the "web" app.
+# Every commit that changes a file in this directory triggers this pipeline.
+apiVersion: pipecd.dev/v1beta1
+kind: KubernetesApp
+spec:
+  name: web
+  labels:
+    env: demo
+    team: theory-ia
+  input:
+    namespace: demo
+    autoCreateNamespace: true
+  # If any stage fails (e.g. ANALYSIS), PipeCD automatically rolls back:
+  # canary pods are deleted and all traffic stays on the last good version.
+  # (true is the default; written out here to make it explicit.)
+  # The very first deploy is a plain QUICK_SYNC; any later image change runs
+  # the progressive pipeline below.
+  planner:
+    autoRollback: true
+  pipeline:
+    stages:
+      # Step 1: start the new version as a small CANARY (25% of primary = 1 pod,
+      # so roughly 1 in 5 requests hits it).
+      - name: K8S_CANARY_ROLLOUT
+        with:
+          replicas: 25%
+          createService: true   # creates web-canary Service so we can probe only the canary
+      # Step 2: automated analysis. piped calls the canary every 10s;
+      # more than 1 non-200 response => stage FAILS => automatic rollback.
+      - name: ANALYSIS
+        with:
+          duration: 60s
+          https:
+            - url: http://web-canary.demo.svc.cluster.local:8080/
+              method: GET
+              expectedCode: 200
+              interval: 10s
+              failureLimit: 1
+              timeout: 5s
+      # Step 3: progressive - grow the canary to 50% (1 in 3 requests).
+      - name: K8S_CANARY_ROLLOUT
+        with:
+          replicas: 50%
+          createService: true
+      # Step 4: analyse again at the higher traffic share.
+      - name: ANALYSIS
+        with:
+          duration: 60s
+          https:
+            - url: http://web-canary.demo.svc.cluster.local:8080/
+              method: GET
+              expectedCode: 200
+              interval: 10s
+              failureLimit: 1
+              timeout: 5s
+      # Step 5: promote - roll the new version out to the PRIMARY variant (100%).
+      - name: K8S_PRIMARY_ROLLOUT
+      # Step 6: clean up the canary pods.
+      - name: K8S_CANARY_CLEAN
+  description: |
+    Theory IA demo: GitOps progressive delivery with automated canary analysis
+    and automatic rollback.
