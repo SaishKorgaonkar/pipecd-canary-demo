@@ -21,7 +21,7 @@ spec:
       containers:
         - name: web
           # Change this tag in Git to release a new version. PipeCD does the rest.
-          image: demo-web:v3
+          image: demo-web:v1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
