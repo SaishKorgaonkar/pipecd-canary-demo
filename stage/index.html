@@ -124,9 +124,11 @@ function render(){
     `<div style="width:${100*counts[k]/total}%;background:${color(k)}"></div>`).join('');
   document.getElementById('legend').innerHTML = keys.map(k =>
     `<span><i class="dot" style="background:${color(k)}"></i>${label(k)} <b>${Math.round(100*counts[k]/total)}%</b></span>`).join('') || '<span style="color:var(--mut)">no responses yet</span>';
-  const errs = recent.filter(r=>!r.ok).length;
+  const served = recent.filter(r=>r.version);
+  const errs = served.filter(r=>!r.ok).length;
   const er = document.getElementById('errrate');
-  er.textContent = `errors: ${Math.round(100*errs/total)}%`; er.style.color = errs ? '#fca5a5' : '#86efac';
+  if (!served.length) { er.textContent = 'no backend yet'; er.style.color = '#8b93a3'; }
+  else { er.textContent = `errors: ${Math.round(100*errs/served.length)}%`; er.style.color = errs ? '#fca5a5' : '#86efac'; }
   drawChart(now);
   // live app preview
   if (last) {

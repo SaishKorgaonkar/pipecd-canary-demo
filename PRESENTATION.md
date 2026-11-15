@@ -1,109 +1,97 @@
 # Presentation script & demo runbook (10-minute slot)
 
-Deck: `PipeCD_TheoryIA_Demo_8slides.pptx`. Slides and the live demo run side by side.
-The white **▶** text in each slide's red footer tells you when to switch screens.
+**Format:** play `PipeCD_TheoryIA_Demo_Video.mp4` (9:53, 1080p, no audio) by screen-sharing in Meet,
+and voice it over live using the timestamps below. The video goes from slides to the live demo, back to
+slides while the first deployment runs, then shows the live app, the faulty release and the fix, and ends
+on the results. Parts marked **2×** are sped-up waits, labelled on screen.
 
-**Roles**
-- **Saish** runs the laptop the whole time (types commands, switches windows) and presents slides 1–2.
-- **Shreejay** presents slides 3–4 and narrates the faulty release.
-- **Chaitanya** presents slides 5–8 and narrates the fixed release.
+Rehearse with `PipeCD_TheoryIA_Demo_Video.srt` (same folder). VLC/IINA show it automatically and display
+who speaks when. Don't load the subtitles when you share the video in the real session.
+
+Speaking time: Saish ≈ 3:17 · Shreejay ≈ 3:45 · Chaitanya ≈ 2:51
 
 ---
 
-## Part A: Speaking script
+## Part A: Voiceover script (synced to the video)
 
-### Saish: Slide 1, Title (~20 s)
-> Good morning. We're Saish, Shreejay and Chaitanya. Our topic is GitOps-based progressive delivery
-> and automated rollback using PipeCD, a CNCF continuous-delivery tool. In the next few minutes
-> we'll release a broken version of an app and let PipeCD catch it and roll it back by itself.
-> Then we'll release the fix and watch it roll out safely.
+| Time | Speaker | On screen |
+|---|---|---|
+| 0:00–0:15 | Saish | Slide 1: Title |
+| 0:15–1:15 | Saish | Slide 2: The problem & the idea |
+| 1:15–1:32 | Saish | Demo: GitOps repository |
+| 1:32–1:50 | Saish | Demo: register the app in PipeCD |
+| 1:50–2:20 | Saish | Demo: first deployment starts |
+| 2:20–3:15 | Shreejay | Slide 3: PipeCD in a nutshell |
+| 3:15–4:20 | Shreejay | Slide 4: How it works: our pipeline |
+| 4:20–4:45 | Shreejay | Demo: live application v1 |
+| 4:45–5:12 | Shreejay | Demo: release v2 (faulty); 2× while piped picks it up |
+| 5:12–6:05 | Shreejay | Demo: v2 canary live, ANALYSIS running |
+| 6:05–6:27 | Chaitanya | Demo: ANALYSIS failed → automatic ROLLBACK |
+| 6:27–7:12 | Chaitanya | Demo: release v3 (fix); 2× while piped picks it up |
+| 7:12–7:53 | Chaitanya | Demo: canary 25%, ANALYSIS (2× in places) |
+| 7:53–8:38 | Chaitanya | Demo: canary 50%, second ANALYSIS (2× in places) |
+| 8:38–8:56 | Chaitanya | Demo: promoted to 100%, all stages green |
+| 8:56–9:41 | Saish | Slide 5: Results & takeaways |
+| 9:41–9:53 | Saish | Slide 6: Thank you |
 
-### Saish: Slide 2, The problem & the idea (~60 s)
-> In a normal deployment the new version replaces the old one for everyone at once. If it has a bug,
-> 100% of users see it. Health checks don't save you either. A pod can be "Ready" and still return
-> errors. So users notice first, and someone rolls back by hand under pressure.
+### 0:00–0:15 · Saish: Slide 1: Title
+> Good morning. We're Saish, Shreejay and Chaitanya. Our topic is GitOps-based progressive delivery and automated rollback using PipeCD, a CNCF continuous-delivery tool.
+
+### 0:15–1:15 · Saish: Slide 2: The problem & the idea
+> In a normal deployment the new version replaces the old one for everyone at once. If it has a bug, every user sees it. Health checks don't save you either: a pod can be "Ready" and still return errors. So users notice first, and someone rolls back by hand.
 >
-> We combine two ideas to fix this. First, **GitOps**: Git is the single source of truth, so a release
-> is just a commit, and an agent inside the cluster applies it. Second, **canary releases**: the new
-> version gets a small slice of real traffic, an automated check runs, and the slice only grows if
-> the check passes. If it fails, the release is rolled back automatically.
+> We combine two ideas to fix this. GitOps: Git is the single source of truth, so a release is just a commit, and an agent in the cluster applies it. And canary releases: the new version gets a small slice of real traffic, an automated check runs, and the slice grows only if the check passes. Otherwise it rolls back automatically. Let's see it.
 
-**▶ DEMO (Saish switches screen)**
-> Here's our GitOps repository on GitHub. The Kubernetes YAML and the pipeline file live here.
-> In the PipeCD console our app `web` is running **v1**. This terminal sends 20 requests a second
-> to the app. Every request is answered by v1, with no errors.
+### 1:15–1:32 · Saish: Demo: GitOps repository
+> This is our GitOps repository. The Kubernetes Deployment says which image runs: demo-web v1. Next to it is app.pipecd.yaml, the deployment pipeline itself, also written as code.
 
-*(switch back to slides)*
+### 1:32–1:50 · Saish: Demo: register the app in PipeCD
+> In the PipeCD console we add the application. piped, PipeCD's agent, has already found it in the repo. We pick the agent, the Kubernetes cluster and the app, and save.
 
-### Shreejay: Slide 3, Our demo setup (~50 s)
-> Everything runs on one laptop in Minikube. On the left is our pipeline, written as code in
-> `app.pipecd.yaml`. It has six stages: start the new version as a canary on 25% of the pods,
-> analyse it, grow it to 50%, analyse again, promote it to 100%, then clean up. The analysis calls
-> the canary every 10 seconds and expects HTTP 200. Two failures and the stage fails. With
-> `autoRollback: true`, PipeCD then undoes everything on its own.
+### 1:50–2:20 · Saish: Demo: first deployment starts
+> PipeCD immediately plans the first deployment: make the cluster match Git. Notice the live application panel on the right still says no running pods. While that deploys, Shreejay will explain what's happening behind the scenes.
+
+### 2:20–3:15 · Shreejay: Slide 3: PipeCD in a nutshell
+> PipeCD has two parts. The Control Plane is the web console and API you just saw. It stores history and coordinates, but it never touches the cluster itself.
 >
-> Our app has three versions. v1 is stable. **v2 is deliberately broken.** It returns HTTP 500,
-> but its health check still passes, so Kubernetes thinks it's fine. v3 is the fix.
-> To release, we only change the image tag in Git and push. Let's release v2.
+> piped is a small agent that runs next to the cluster. It watches Git, notices new commits, plans the deployment and executes every stage. It only makes outbound connections, so cluster credentials never leave the cluster. PipeCD is a CNCF sandbox project created by CyberAgent, and the same model works for Terraform, ECS, Lambda and Cloud Run.
 
-**▶ DEMO: Saish runs `./scripts/release.sh v2`**
-> That's the whole release: a one-line change, a commit, and a push. Within about 10 seconds PipeCD
-> picks it up. In the console it says *"Sync progressively because of updating image from v1 to v2."*
-> In the traffic terminal you can see red errors: about one in five requests now hits v2.
+### 3:15–4:20 · Shreejay: Slide 4: How it works: our pipeline
+> This is our pipeline. When the image changes, PipeCD first starts the new version as a canary on 25% of the pods, so about one in five requests reaches it. Then an ANALYSIS stage calls the canary every 10 seconds and expects HTTP 200. More than one failure fails the stage. If it passes, the canary grows to 50%, is analysed again, and is then promoted to 100%.
+>
+> autoRollback is on, so if any stage fails PipeCD undoes everything by itself. We built three versions: v1 is stable, v2 is deliberately broken (it returns HTTP 500 but its health check still passes), and v3 is the fix.
 
-*(switch back to slides while the analysis runs)*
+### 4:20–4:45 · Shreejay: Demo: live application v1
+> Back to the demo. The first deployment succeeded and the app is Synced with Git. On the right is the live application: version 1. Our traffic generator sends 20 requests a second, and 100% are answered by v1 with zero errors.
 
-### Shreejay: Slide 4, PipeCD in a nutshell (~40 s, while ANALYSIS runs)
-> While that runs, here's what's happening behind the scenes. PipeCD has two parts. The
-> **Control Plane** is the web console and API. It stores history and coordinates, but never touches
-> the cluster. **piped** is a small agent running next to the cluster. It watched our repo, saw the
-> new commit, planned the deployment, and is running the analysis right now. It only makes outbound
-> connections, so cluster credentials never leave the cluster. The same model also works for
-> Terraform, ECS, Lambda and Cloud Run. Let's see what the analysis decided.
+### 4:45–5:12 · Shreejay: Demo: release v2 (faulty); 2× while piped picks it up
+> Now the faulty release. A release is just one line in Git: the image tag changes from v1 to v2, we commit and push. Nobody runs kubectl. piped polls the repository and picks up the new commit.
 
-**▶ DEMO: Saish switches to the console (deployment page) and the traffic terminal**
-> The ANALYSIS stage turned **red**: it got HTTP 500 twice. PipeCD skipped the remaining stages and
-> ran **ROLLBACK** by itself. In the traffic terminal it's back to **v1 OK x20**, no errors. Nobody
-> touched the cluster.
+### 5:12–6:05 · Shreejay: Demo: v2 canary live, ANALYSIS running
+> PipeCD says it will sync progressively because the image changed. The canary is up. Look at the right: about a quarter of the requests now hit v2 and fail with HTTP 500, shown in red. The ANALYSIS stage is probing the canary, and in the log you can see it getting unexpected status code 500.
 
-*(switch back to slides)*
+### 6:05–6:27 · Chaitanya: Demo: ANALYSIS failed → automatic ROLLBACK
+> And there it is: ANALYSIS failed, the rest of the pipeline was skipped, and PipeCD ran ROLLBACK by itself. It deleted the canary and kept v1. On the right, traffic is back to 100% v1 with zero errors. No human touched the cluster.
 
-### Chaitanya: Slide 5, Faulty v2: automatic rollback (~40 s)
-> To recap what we just saw: the canary served about 20% of traffic, the analysis caught the 500s,
-> and the rollback deleted the canary and re-applied v1. In our test run the broken version was
-> live for about 28 seconds. Only about 22% of requests in that window were affected, and the main
-> deployment never changed. Now the developer pushes the fix.
+### 6:27–7:12 · Chaitanya: Demo: release v3 (fix); 2× while piped picks it up
+> Now the developer pushes the fix, v3, the same way: one line in Git, commit, push. PipeCD picks it up and starts the same pipeline.
 
-**▶ DEMO: Saish runs `./scripts/release.sh v3`**
-> Same pipeline, new version. The canary is starting. In the terminal you can see v3 taking about
-> one request in five, and all of them succeed.
+### 7:12–7:53 · Chaitanya: Demo: canary 25%, ANALYSIS (2× in places)
+> The v3 canary is live on 25% of the pods. Green on the right is v3, roughly a fifth of the traffic, and every request succeeds. The analysis gets HTTP 200 each time, so this time it passes.
 
-*(switch back to slides)*
+### 7:53–8:38 · Chaitanya: Demo: canary 50%, second ANALYSIS (2× in places)
+> PipeCD now grows the canary to 50%, and v3's share rises to about a third of live traffic. This is the progressive part: the new version earns more traffic only after each check passes.
 
-### Chaitanya: Slide 6, Fixed v3: progressive rollout (~60–90 s, while v3 rolls out)
-> This chart is from our test run. It shows v3's share of live traffic over time. At the first canary
-> step it gets about 19%, one new pod out of five. After the analysis passes, PipeCD grows the canary
-> to 50% and v3 gets about 33%. After the second analysis it's promoted to 100%.
-> *(glance at demo)* We're at the second step now. *(when done)* All six stages are green.
+### 8:38–8:56 · Chaitanya: Demo: promoted to 100%, all stages green
+> Second analysis passed, so v3 is promoted to the primary and the canary is cleaned up. All six stages are green, 100% of traffic is on v3, and there were zero errors during the rollout.
 
-**▶ DEMO: Saish shows all 6 stages green + terminal `v3 OK x20`**
-> Every request is now served by v3, with zero errors during the whole rollout.
+### 8:56–9:41 · Saish: Slide 5: Results & takeaways
+> To sum up, from our measured runs: the broken version was exposed for only about half a minute, to about a fifth of requests, and the rollback took about 2 seconds with no human involved. The fix rolled out with zero errors.
+>
+> Our takeaways: health checks don't prove correctness, and only the analysis caught v2. Releases and rollbacks happened without anyone running kubectl, and Git gives a full audit trail. Next we'd add Prometheus metrics, Istio traffic weights and PipeCD's Event Watcher to connect it to CI.
 
-*(switch back to slides)*
-
-### Chaitanya: Slide 7, Results & takeaways (~45 s)
-> To sum up: the broken build was live for about 28 seconds, and the rollback took about 2 seconds
-> with no human involved. The fix rolled out in steps with zero errors. Our three takeaways: health
-> checks don't prove correctness, and only the analysis caught v2. Releases and rollbacks happened
-> without anyone running kubectl, and Git gives us a full audit trail. As future scope we'd add
-> Prometheus metrics for the analysis, exact traffic weights with Istio, and PipeCD's Event Watcher
-> to connect it to CI.
-
-### Chaitanya: Slide 8, Thank you (~10 s)
-> Everything we showed, including scripts and setup steps, is in our public repo on the slide.
-> Thank you.
-
-**Total ≈ 8–9 min**, including the two pipeline waits.
+### 9:41–9:53 · Saish: Slide 6: Thank you
+> Everything we showed is in our public repository on screen. Thank you.
 
 ---
 
@@ -139,34 +127,26 @@ If it doesn't say v1: `./scripts/release.sh v1`, then wait until that deployment
 
 Check: `kubectl get deploy -n demo -o wide` shows `web 4/4 demo-web:v1` and **no** `web-canary`.
 
-### B3. Screen layout
-| Window | Content |
-|---|---|
-| Browser tab 1 | GitHub repo page (`manifests/web/`) |
-| Browser tab 2 | PipeCD console, **Deployments** page (logged in) |
-| Terminal 2 | `./scripts/traffic.sh`, started before the talk and left running |
-| Terminal 3 | in the repo folder, ready to type `./scripts/release.sh v2` |
-| Slides | PowerPoint / Google Slides presenter view |
+### B3. Live presenting instead of the video: screen layout
+Use two fullscreen spaces and switch between them (Ctrl+← / Ctrl+→ on a Mac):
+- **Space 1:** the slides (`PipeCD_TheoryIA_Demo_8slides.pptx`), in slideshow mode.
+- **Space 2:** the demo stage. Run `python3 stage/server.py`, open <http://localhost:7700> in Chrome and make it fullscreen
+  (log in to the console at localhost:8080 first). It shows the PipeCD console, the live app, live traffic (20 req/s)
+  and a terminal panel in one screen.
+- Keep a terminal handy (hidden) for `./scripts/release.sh v2` / `v3`. Its output also appears in the stage's terminal panel.
 
-Tip: place the console and Terminal 2 side by side on one screen, so a single switch shows both.
-
-### B4. Live sequence (matches the ▶ cues)
-| # | Cue | Action | What the audience sees |
+### B4. Live sequence (same order as the video)
+| # | When | Action | What the audience sees |
 |---|---|---|---|
-| 1 | Slide 2 | Show GitHub tab, then console + Terminal 2 | app on v1, `v1 OK x20` |
-| 2 | Slide 3 | Terminal 3: `./scripts/release.sh v2` | diff `v1 → v2`, "pushed …" |
-| 3 | +10–20 s | Console → click the new deployment | K8S_CANARY_ROLLOUT running; Terminal 2: `v2 ERR x4` |
-| 4 | Slide 4 | Switch to slides, talk ~40 s | |
-| 5 | Slide 4 ▶ | Back to console | ANALYSIS ✖ red, ROLLBACK ✔; Terminal 2 back to `v1 OK x20` |
-| 6 | Slide 5 ▶ | Terminal 3: `./scripts/release.sh v3` | new deployment starts; `v3 OK x4` |
-| 7 | Slide 6 | Talk; peek at the console at each stage | 25% → analysis ✔ → 50% (`v3 OK x6–7`) → analysis ✔ |
-| 8 | Slide 6 ▶ | Show the console | all 6 stages ✔; Terminal 2 `v3 OK x20` |
+| 1 | after slide 2 | Space 2: show the repo and register `web` in PipeCD (Applications → + ADD) | first deployment planned |
+| 2 | slides 3–4 | Space 1: explain PipeCD and the pipeline (~2 min) | first deploy completes meanwhile |
+| 3 | after slide 4 | Space 2: open the deployment, then Applications | SUCCESS, live app **v1**, 100% v1 |
+| 4 | | `./scripts/release.sh v2`, then open the new deployment | canary → `v2 ERR` in red → ANALYSIS ✖ → ROLLBACK ✔ (~85 s after the push) |
+| 5 | | `./scripts/release.sh v3`, then open the new deployment | 25% → 50% → 100% v3, all ✔ (~3 min) |
+| 6 | | Space 1: slides 5–6 | results, thank you |
 
-Timing: from the v2 push to rollback takes **~40–60 s**. The full v3 rollout takes **~2.5–3 min**.
-
-Optional visuals: to show the broken page during step 3, run
-`kubectl -n demo port-forward deploy/web-canary 9090:8080` and open localhost:9090.
-To show the green v3 page at the end, run `kubectl -n demo port-forward svc/web 9091:8080`.
+To start from scratch, as the video does (app not yet registered): delete the app in PipeCD
+(Applications → ⋮ → Delete), run `kubectl delete ns demo`, then `./scripts/release.sh v1`.
 
 ### B5. If something goes wrong
 | Problem | Fix |
@@ -175,7 +155,7 @@ To show the green v3 page at the end, run `kubectl -n demo port-forward svc/web 
 | Console won't load | The port-forward died. Re-run `kubectl port-forward -n pipecd svc/pipecd 8080` |
 | `traffic.sh` says the pod already exists | Run `kubectl -n demo delete pod traffic`, then start it again |
 | `git push` rejected | `git pull --rebase && git push` |
-| Something breaks live | Switch to slides 5 and 6. They show the real screenshots and data from our verified run |
+| Something breaks live | Play the recorded video, or use the two backup slides at the end of the deck |
 
 ### B6. After the demo (to repeat it)
 `./scripts/release.sh v1`, then wait for SUCCESS. That's the reset.
