@@ -1,2 +1,4 @@
 .DS_Store
 *.bak
+stage/.terminal.log
+stage/.state.json

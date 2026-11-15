@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PipeCD live demo</title>
+<style>
+  :root { --bg:#0e1015; --card:#161a22; --line:#262c38; --ink:#e7e9ee; --mut:#8b93a3;
+          --v1:#2563eb; --v2:#dc2626; --v3:#16a34a; --gray:#6b7280; --amber:#f59e0b; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:100%; height:100%; background:var(--bg); overflow:hidden; }
+  body { font-family:"Fira Sans", system-ui, sans-serif; color:var(--ink); }
+  #stage { width:1920px; height:1080px; position:absolute; left:0; top:0; transform-origin:0 0; }
+  header { position:absolute; left:24px; right:24px; top:14px; height:56px; display:flex; align-items:center; gap:18px; }
+  .live { background:var(--v2); color:#fff; font-weight:700; font-size:15px; letter-spacing:.08em; padding:6px 12px; border-radius:6px; display:flex; gap:8px; align-items:center; }
+  .live i { width:9px; height:9px; border-radius:50%; background:#fff; animation:blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity:.25 } }
+  .ttl { font-size:20px; color:var(--mut); }
+  .step { margin-left:auto; text-align:right; }
+  .step b { display:block; font-size:26px; font-weight:700; }
+  .step span { font-size:15px; color:var(--mut); }
+  .git { font-family:"Roboto Mono", monospace; font-size:16px; background:var(--card); border:1px solid var(--line); padding:8px 12px; border-radius:8px; }
+  .git em { font-style:normal; font-weight:700; }
+  #left { position:absolute; left:24px; top:84px; width:1200px; height:972px; border-radius:10px; overflow:hidden; border:1px solid var(--line); background:#fff; }
+  #console { width:1412px; height:1144px; border:0; transform:scale(.85); transform-origin:0 0; }
+  #repo { position:absolute; inset:0; background:#0d1117; display:none; font-family:"Roboto Mono", monospace; }
+  .rh { height:64px; display:flex; align-items:center; gap:12px; padding:0 22px; border-bottom:1px solid #30363d; color:#e6edf3; font-family:"Fira Sans",sans-serif; font-size:20px; }
+  .rh small { color:#7d8590; font-size:15px; margin-left:8px; }
+  .rh .br { margin-left:auto; font-size:14px; border:1px solid #30363d; padding:4px 10px; border-radius:6px; color:#7d8590; }
+  .rb { position:absolute; top:64px; bottom:0; left:0; right:0; display:flex; }
+  .tree { width:300px; border-right:1px solid #30363d; padding:16px 0; font-size:15px; color:#adbac7; }
+  .tree div { padding:6px 20px; white-space:nowrap; }
+  .tree .sel { background:#1f6feb33; color:#fff; border-left:3px solid #1f6feb; }
+  .tree .d { color:#7d8590; }
+  .code { flex:1; overflow:hidden; padding:14px 0; font-size:17px; line-height:1.55; }
+  .fname { padding:0 18px 12px; color:#e6edf3; font-family:"Fira Sans",sans-serif; font-size:17px; border-bottom:1px solid #30363d; margin-bottom:10px; }
+  .ln { display:flex; white-space:pre; color:#c9d1d9; }
+  .ln .n { width:56px; text-align:right; padding-right:16px; color:#6e7681; flex:none; }
+  .ln.hl { background:#bb800926; box-shadow:inset 3px 0 0 #d29922; }
+  .ln.flash { animation:flash 2.4s ease-out; }
+  @keyframes flash { 0% { background:#2ea04366; } 100% { background:#bb800926; } }
+  .k { color:#7ee787; } .c { color:#8b949e; } .s { color:#a5d6ff; }
+  #right { position:absolute; left:1248px; top:84px; width:648px; height:972px; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; position:relative; }
+  .card h3 { font-size:14px; letter-spacing:.1em; text-transform:uppercase; color:var(--mut); font-weight:600; margin-bottom:12px; display:flex; }
+  .card h3 span { margin-left:auto; text-transform:none; letter-spacing:0; }
+  #app { height:270px; }
+  #appview { height:200px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:background .15s; text-align:center; }
+  #appview .big { font-size:56px; font-weight:700; color:#fff; }
+  #appview .sm { font-size:17px; color:#ffffffd0; margin-top:6px; font-family:"Roboto Mono",monospace; }
+  #traffic { height:356px; }
+  #bar { display:flex; height:34px; border-radius:6px; overflow:hidden; background:#222835; }
+  #bar div { transition:width .3s; }
+  #legend { display:flex; gap:18px; margin:12px 0 10px; font-size:17px; flex-wrap:wrap; }
+  #legend b { font-family:"Roboto Mono",monospace; }
+  .dot { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+  #chart { width:612px; height:170px; display:block; }
+  #term { flex:1; background:#0b0d12; font-family:"Roboto Mono",monospace; font-size:15px; line-height:1.5; overflow:hidden; }
+  #termtext { white-space:pre-wrap; color:#d1d5db; position:absolute; left:18px; right:18px; bottom:14px; }
+  .cur { display:inline-block; width:9px; height:17px; background:#d1d5db; vertical-align:-3px; animation:blink 1s steps(1) infinite; }
+  .tp { color:#86efac; } .tm { color:#fca5a5; } .ta { color:#93c5fd; } .tg { color:#6b7280; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <header>
+    <div class="live"><i></i>LIVE DEMO</div>
+    <div class="ttl">PipeCD · GitOps canary on Minikube</div>
+    <div class="git">Git: <em id="gittag">…</em></div>
+    <div class="step"><b id="step">Ready</b><span id="sub">&nbsp;</span></div>
+  </header>
+
+  <div id="left">
+    <iframe id="console" src="http://localhost:8080/applications?project=quickstart"></iframe>
+    <div id="repo">
+      <div class="rh">📁 SaishKorgaonkar / <b>pipecd-canary-demo</b><small>GitOps repository</small><span class="br">⎇ main</span></div>
+      <div class="rb">
+        <div class="tree" id="tree"></div>
+        <div class="code"><div class="fname" id="fname"></div><div id="code"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="card" id="app"><h3>Live application<span id="appurl">http://web.demo:8080</span></h3>
+      <div id="appview" style="background:#222835"><div class="big" style="color:var(--mut)">waiting…</div></div></div>
+    <div class="card" id="traffic"><h3>Live traffic · 20 requests / s<span id="errrate"></span></h3>
+      <div id="bar"></div><div id="legend"></div><canvas id="chart" width="1224" height="340"></canvas></div>
+    <div class="card" id="term"><h3>Terminal</h3><div id="termtext"></div></div>
+  </div>
+</div>
+<script>
+const COLORS = { v1:'#2563eb', v2:'#dc2626', v3:'#16a34a', ERR:'#dc2626', NONE:'#4b5563' };
+function fit(){ const s=Math.min(innerWidth/1920, innerHeight/1080); const st=document.getElementById('stage');
+  st.style.transform=`scale(${s})`; st.style.left=((innerWidth-1920*s)/2)+'px'; st.style.top=((innerHeight-1080*s)/2)+'px'; }
+addEventListener('resize', fit); fit();
+
+// ---------- traffic generator ----------
+const hist = [];           // {t, key, ok}
+let last = null;
+function keyOf(r){ if (!r.version) return 'NONE'; return r.version + (r.ok ? '' : '!'); }
+async function hit(){
+  const t = Date.now();
+  try {
+    const res = await fetch('/app/api/version', {cache:'no-store'});
+    const j = await res.json();
+    const r = { t, version:j.version, ok:res.status===200, code:res.status, pod:j.pod };
+    hist.push(r); last = r;
+  } catch(e) { const r={t,version:null,ok:false,code:0}; hist.push(r); last=r; }
+}
+setInterval(hit, 50);
+
+function label(k){ if (k==='NONE') return 'no pod / proxy'; return k.endsWith('!') ? k.slice(0,-1)+' ERR' : k+' OK'; }
+function color(k){ if (k==='NONE') return COLORS.NONE; if (k.endsWith('!')) return COLORS.ERR; return COLORS[k]||'#a78bfa'; }
+
+function render(){
+  const now = Date.now();
+  while (hist.length && hist[0].t < now - 95000) hist.shift();
+  const recent = hist.filter(r => r.t > now - 2000);
+  const counts = {};
+  recent.forEach(r => { const k=keyOf(r); counts[k]=(counts[k]||0)+1; });
+  const total = recent.length || 1;
+  const keys = Object.keys(counts).sort((a,b)=> (a.endsWith('!')-b.endsWith('!')) || a.localeCompare(b));
+  document.getElementById('bar').innerHTML = keys.map(k =>
+    `<div style="width:${100*counts[k]/total}%;background:${color(k)}"></div>`).join('');
+  document.getElementById('legend').innerHTML = keys.map(k =>
+    `<span><i class="dot" style="background:${color(k)}"></i>${label(k)} <b>${Math.round(100*counts[k]/total)}%</b></span>`).join('') || '<span style="color:var(--mut)">no responses yet</span>';
+  const errs = recent.filter(r=>!r.ok).length;
+  const er = document.getElementById('errrate');
+  er.textContent = `errors: ${Math.round(100*errs/total)}%`; er.style.color = errs ? '#fca5a5' : '#86efac';
+  drawChart(now);
+  // live app preview
+  if (last) {
+    const v = document.getElementById('appview');
+    if (last.ok) { v.style.background = COLORS[last.version]||'#374151';
+      v.innerHTML = `<div class="big">Version ${last.version}</div><div class="sm">HTTP 200 · pod ${last.pod||''}</div>`; }
+    else if (last.version) { v.style.background = '#7f1d1d';
+      v.innerHTML = `<div class="big">HTTP 500</div><div class="sm">Internal Server Error · ${last.version} on ${last.pod||''}</div>`; }
+    else { v.style.background = '#222835';
+      v.innerHTML = `<div class="big" style="color:var(--mut);font-size:40px">no running pods</div><div class="sm">service has no ready endpoints</div>`; }
+  }
+}
+setInterval(render, 400);
+
+function drawChart(now){
+  const c = document.getElementById('chart'), g = c.getContext('2d'); const W=c.width, H=c.height;
+  g.clearRect(0,0,W,H);
+  const span = 90000, bins = 90, bw = W/bins;
+  for (let i=0;i<bins;i++){
+    const t0 = now - span + i*1000, t1 = t0+1000;
+    const rs = hist.filter(r=>r.t>=t0 && r.t<t1); if (!rs.length) continue;
+    const cnt = {}; rs.forEach(r=>{const k=keyOf(r); cnt[k]=(cnt[k]||0)+1;});
+    let y = H - 28;
+    Object.keys(cnt).sort((a,b)=> (a.endsWith('!')-b.endsWith('!')) || a.localeCompare(b)).forEach(k=>{
+      const h = (H-40) * cnt[k]/rs.length; g.fillStyle = color(k); g.fillRect(i*bw, y-h, bw+0.5, h); y -= h; });
+  }
+  g.fillStyle='#8b93a3'; g.font='22px Fira Sans'; g.fillText('last 90 s →', 4, H-4);
+  g.textAlign='right'; g.fillText('now', W-4, H-4); g.textAlign='left';
+}
+
+// ---------- state, terminal, repo ----------
+async function poll(){
+  try {
+    const st = await (await fetch('/state',{cache:'no-store'})).json();
+    document.getElementById('step').textContent = st.step || 'Ready';
+    document.getElementById('sub').innerHTML = st.sub || '&nbsp;';
+    const repo = st.view === 'repo';
+    document.getElementById('repo').style.display = repo ? 'block' : 'none';
+    if (repo) await showFile(st.file || 'manifests/web/deployment.yaml');
+  } catch(e){}
+  try {
+    const t = await (await fetch('/term',{cache:'no-store'})).text();
+    const lines = t.split('\n').slice(-14).join('\n');
+    document.getElementById('termtext').innerHTML = colorize(lines) + '<span class="cur"></span>';
+  } catch(e){}
+  try {
+    const d = await (await fetch('/file?p=manifests/web/deployment.yaml',{cache:'no-store'})).text();
+    const m = d.match(/image:\s*(\S+)/); document.getElementById('gittag').textContent = m ? m[1] : '?';
+  } catch(e){}
+}
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function colorize(t){ return esc(t).split('\n').map(l =>
+  l.startsWith('$') ? `<span class="tp">${l}</span>` :
+  /^-\s/.test(l) ? `<span class="tm">${l}</span>` : /^\+\s/.test(l) ? `<span class="tp">${l}</span>` :
+  l.startsWith('>>') ? `<span class="ta">${l}</span>` : /^(diff|index|@@|---|\+\+\+)/.test(l) ? `<span class="tg">${l}</span>` : l).join('\n'); }
+
+const TREE = ['app/','  Dockerfile','  server.py','manifests/web/','  app.pipecd.yaml','  deployment.yaml','  service.yaml','scripts/','README.md'];
+let lastFile = '', lastText = '';
+async function showFile(f){
+  const txt = await (await fetch('/file?p='+f,{cache:'no-store'})).text();
+  const base = f.split('/').pop();
+  document.getElementById('tree').innerHTML = TREE.map(x => {
+    const name = x.trim(); const dir = name.endsWith('/');
+    return `<div class="${dir?'d':''} ${name===base?'sel':''}">${x.startsWith('  ')?'&nbsp;&nbsp;&nbsp;&nbsp;':''}${dir?'📁 ':'📄 '}${name}</div>`; }).join('');
+  document.getElementById('fname').textContent = f;
+  if (f === lastFile && txt === lastText) return;
+  const changed = f === lastFile && txt !== lastText;
+  lastFile = f; lastText = txt;
+  document.getElementById('code').innerHTML = txt.split('\n').slice(0,40).map((l,i) => {
+    const hl = /image:/.test(l);
+    let h = esc(l).replace(/^(\s*-?\s*)([\w.]+)(:)/, '$1<span class="k">$2</span>$3').replace(/(#.*)$/, '<span class="c">$1</span>');
+    return `<div class="ln ${hl?'hl':''} ${hl&&changed?'flash':''}"><span class="n">${i+1}</span><span>${h||' '}</span></div>`; }).join('');
+}
+setInterval(poll, 300); poll();
+</script>
+</body>
+</html>
